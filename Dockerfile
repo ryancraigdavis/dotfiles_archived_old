@@ -1,5 +1,4 @@
 FROM ubuntu:focal-20211006
-# FROM ubuntu:jammy-20211122
 LABEL maintainer = "Ryan Davis - http:www.ryancdavis.com"
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -27,8 +26,6 @@ RUN apt-get update && apt-get install -y git \
   && mkdir "$HOME/.config" \
   && git clone https://github.com/ryancraigdavis/dotfiles $HOME/dotfiles \
   && mv "$HOME/dotfiles/nvim" "$HOME/.config" \
-  # && git clone --depth 1 https://github.com/wbthomason/packer.nvim \
-  # ~/.local/share/nvim/site/pack/packer/start/packer.nvim \
     # NeoVim
   && git clone https://github.com/neovim/neovim $HOME/neovim \
   && apt-get clean \
