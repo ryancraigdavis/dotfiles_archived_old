@@ -78,6 +78,7 @@ RUN pip install --no-cache-dir pytest==6.2.5 \
 
   && go install github.com/mattn/efm-langserver@v0.0.38 \
   && go install mvdan.cc/sh/v3/cmd/shfmt@latest \
+  && go install github.com/jesseduffield/lazygit@latest \
   && curl -o /usr/bin/hadolint https://github.com/hadolint/hadolint/releases/download/v2.8.0/hadolint-Linux-x86_64 \
   && chmod +x /usr/bin/hadolint \
 
