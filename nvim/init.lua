@@ -88,8 +88,6 @@ require("packer").startup(function(use)
     config = function()
       require("trouble").setup {
         mode = "document_diagnostics",
-        auto_open = true,
-        auto_close = true,
       }
     end
   }
@@ -138,6 +136,7 @@ require("packer").startup(function(use)
   use "nvim-lua/plenary.nvim"
   use "nvim-lua/popup.nvim"
   use "nvim-telescope/telescope.nvim"
+  use "jvgrootveld/telescope-zoxide"
 
   -- Treesitter for NeoVim
   use "nvim-treesitter/nvim-treesitter"
@@ -231,8 +230,8 @@ capabilities.textDocument.completion.completionItem.resolveSupport = {
 }
 
 -- LSP Server config
-require("lspconfig").pyright.setup({
-  cmd = { "pyright-langserver", "--stdio" },
+require("lspconfig").pylsp.setup({
+  cmd = { "pylsp" },
   filetypes = { "python" },
   capabilities = capabilities,
   settings = {
@@ -243,6 +242,16 @@ require("lspconfig").pyright.setup({
         useLibraryCodeForTypes = true,
       },
     },
+    pylsp = {
+      plugins = {
+        pylint = {
+          enabled = true,
+        },
+        rope = {
+          enabled = true,
+        }
+      }
+    }
   },
 })
 
@@ -370,7 +379,7 @@ vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagn
 local nvim_lsp = require('lspconfig')
 -- Use a loop to conveniently call 'setup' on multiple servers and
 -- map buffer local keybindings when the language server attaches
-local servers = { 'pyright', 'rust_analyzer', 'tsserver' }
+local servers = { 'pylsp', 'rust_analyzer', 'tsserver' }
 for _, lsp in ipairs(servers) do
   nvim_lsp[lsp].setup {
     on_attach = on_attach,
@@ -639,12 +648,18 @@ require("telescope").setup({
     },
   },
 })
-
+require'telescope'.load_extension('zoxide')
 -- Telescope File Pickers
 map("n", "<leader>fs", '<cmd>lua require("telescope.builtin").find_files()<cr>')
 map("n", "<leader>fg", '<cmd>lua require("telescope.builtin").live_grep()<cr>')
 map("n", "<leader>fr", '<cmd>lua require("telescope.builtin").grep_string()<cr>')
 map("n", "<leader>ff", '<cmd>lua require("telescope.builtin").file_browser({ hidden = true })<cr>')
+vim.api.nvim_set_keymap(
+	"n",
+	"<leader>ft",
+	":lua require'telescope'.extensions.zoxide.list{}<CR>",
+	{noremap = true, silent = true}
+)
 -- Telescope Vim Pickers
 map("n", "<leader>vr", '<cmd>lua require("telescope.builtin").registers()<cr>')
 map("n", "<leader>vm", '<cmd>lua require("telescope.builtin").marks()<cr>')
