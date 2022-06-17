@@ -1,4 +1,4 @@
--- Ryan Davis NeoVim 0.6.1 Lua Config
+-- Ryan Davis NeoVim 0.7.0 Lua Config
 
 -- Dependencies
 -- Plugins require Packer, a Lua package manager, installation found https://github.com/wbthomason/packer.nvim
@@ -15,14 +15,14 @@ local cmd = vim.cmd -- to execute Vim commands e.g. cmd('pwd')
 local fn = vim.fn -- to call Vim functions e.g. fn.bufnr()
 local g = vim.g -- a table to access global variables
 local opt = vim.opt -- to set options
-
-local function map(mode, lhs, rhs, opts)
-  local options = { noremap = true }
-  if opts then
-    options = vim.tbl_extend("force", options, opts)
-  end
-  vim.api.nvim_set_keymap(mode, lhs, rhs, options)
+local function map(mode, lhs, rhs)
+  vim.keymap.set(mode, lhs, rhs)
 end
+
+-- Changes the filetype detection to the new lua file
+-- If this is giving issues, remove the second line
+vim.g.do_filetype_lua = 1
+vim.g.did_load_filetypes = 0
 
 local colors = {
   bg = "#202328",
@@ -57,7 +57,6 @@ end
 require("packer").startup(function(use)
 
   -- Theme
-  -- "tanvirtin/monokai.nvim",
   use "folke/tokyonight.nvim"
 
   -- Vim Diff on side/vim fugitive
@@ -81,16 +80,10 @@ require("packer").startup(function(use)
   use "kyazdani42/nvim-tree.lua"
   use "kyazdani42/nvim-web-devicons"
 
-  -- LSP Diagnostics
-  use {
-    "folke/trouble.nvim",
-    requires = "kyazdani42/nvim-web-devicons",
-    config = function()
-      require("trouble").setup {
-        mode = "document_diagnostics",
-      }
-    end
-  }
+  -- LSP Diagnostics Config
+  use "WhoIsSethDaniel/toggle-lsp-diagnostics.nvim"
+
+
   -- Auto pairs and bracket surroundings
   use "jiangmiao/auto-pairs"
   use "ur4ltz/surround.nvim"
@@ -148,7 +141,7 @@ require("packer").startup(function(use)
 end)
 
 -- Theme Config
-g.tokyonight_style = "storm"
+g.tokyonight_style = "night"
 g.tokyonight_italic_comments = true
 
 opt.termguicolors = true -- You will have bad experience for diagnostic messages when it's default 4000.
@@ -257,7 +250,15 @@ require("lspconfig").pylsp.setup({
 
 require("lspconfig").rust_analyzer.setup({})
 
-require("lspconfig").sumneko_lua.setup({})
+require("lspconfig").sumneko_lua.setup({
+  settings = {
+    Lua = {
+      diagnostics = {
+        globals = {"vim"},
+      }
+    }
+  }
+})
 
 require("lspconfig").cssls.setup({
   cmd = { "vscode-css-language-server", "--stdio" },
@@ -372,10 +373,6 @@ end
 vim.diagnostic.open_float(nil, {
     source = 'always'
 })
-vim.lsp.handlers["textDocument/publishDiagnostics"] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
-  virtual_text = false,
-})
-
 local nvim_lsp = require('lspconfig')
 -- Use a loop to conveniently call 'setup' on multiple servers and
 -- map buffer local keybindings when the language server attaches
@@ -392,12 +389,11 @@ end
 
 map("n", "<leader>ce", '<cmd>lua vim.diagnostic.open_float()<CR>')
 map("n", "<leader>cn", '<cmd>lua vim.diagnostic.goto_next()<CR>')
-map("n", "<leader>csl", '<cmd>lua vim.diagnostic.show_line_diagnostics()<CR>')
-map("n", "<C-q>", '<cmd>TroubleToggle<CR>')
+map("n", "<C-q>", '<Plug>(toggle-lsp-diag-vtext)')
 
 -- Setup treesitter
 local ts = require("nvim-treesitter.configs")
-ts.setup({ ensure_installed = "maintained", highlight = { enable = true } })
+ts.setup({ ensure_installed = {"python", "rust"}, highlight = { enable = true } })
 
 -- Various options
 opt.number = true
@@ -469,11 +465,9 @@ map("n", "<C-v", ":r !pbpaste<CR><CR>")
 -- Config from https://github.com/whatsthatsmell/dots/blob/master/public%20dots/vim-nvim/lua/joel/completion/init.lua
 -- completion maps (not cmp) --
 -- line completion - use more!
--- inoremap <C-l> <C-x><C-l>
-vim.api.nvim_set_keymap("i", "<c-l>", "<c-x><c-l>", { noremap = true })
+map("i", "<c-l>", "<c-x><c-l>")
 -- Vim command-line completion
--- inoremap <C-v> <C-x><C-v>
-vim.api.nvim_set_keymap("i", "<c-v>", "<c-x><c-v>", { noremap = true })
+map("i", "<c-v>", "<c-x><c-v>")
 -- end non-cmp completion maps --
 
 -- Setup nvim-cmp
@@ -532,9 +526,6 @@ cmp.setup({
   experimental = {
     ghost_text = true,
   },
-  documentation = {
-    border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-  },
   sources = {
     -- 'crates' is lazy loaded
     { name = "nvim_lsp" },
@@ -573,19 +564,6 @@ cmp.setup({
 local cmp_autopairs = require("nvim-autopairs.completion.cmp")
 cmp.event:on("confirm_done", cmp_autopairs.on_confirm_done({ map_char = { tex = "" } }))
 
-local t = function(str)
-  return vim.api.nvim_replace_termcodes(str, true, true, true)
-end
-
-local check_back_space = function()
-  local col = vim.fn.col(".") - 1
-  if col == 0 or vim.fn.getline("."):sub(col, col):match("%s") then
-    return true
-  else
-    return false
-  end
-end
-
 -- Highlight on yank
 cmd("au TextYankPost * lua vim.highlight.on_yank {on_visual = true}") -- disabled in visual mode
 
@@ -609,18 +587,18 @@ map("n", "<S-Tab>", ":bprevious<CR> :TroubleRefresh<CR>")
 -- Use these two if you don't have prettier
 --map('n'), '<c-j>', '<cmd>m .+1<CR>==')
 --map('n,) <c-k>', '<cmd>m .-2<CR>==')
-map("n", "<c-j>", "<cmd>m .+1<CR>", { silent = true })
-map("n", "<c-k>", "<cmd>m .-2<CR>", { silent = true })
-map("i", "<c-j> <Esc>", "<cmd>m .+1<CR>==gi", { silent = true })
-map("i", "<c-k> <Esc>", "<cmd>m .-2<CR>==gi", { silent = true })
-map("v", "<c-j>", "<cmd>m +1<CR>gv=gv", { silent = true })
-map("v", "<c-k>", "<cmd>m -2<CR>gv=gv", { silent = true })
+map("n", "<c-j>", "<cmd>m .+1<CR>")
+map("n", "<c-k>", "<cmd>m .-2<CR>")
+map("i", "<c-j> <Esc>", "<cmd>m .+1<CR>==gi")
+map("i", "<c-k> <Esc>", "<cmd>m .-2<CR>==gi")
+map("v", "<c-j>", "<cmd>m +1<CR>gv=gv")
+map("v", "<c-k>", "<cmd>m -2<CR>gv=gv")
 
 --Auto close tags
 map("i", ",/", "</<C-X><C-O>")
 
 --After searching, pressing escape stops the highlight
-map("n", "<esc>", ":noh<cr><esc>", { silent = true })
+map("n", "<esc>", ":noh<cr><esc>")
 
 -- Telescope Global remapping
 local actions = require("telescope.actions")
@@ -650,25 +628,18 @@ require("telescope").setup({
 })
 require'telescope'.load_extension('zoxide')
 -- Telescope File Pickers
-map("n", "<leader>fs", '<cmd>lua require("telescope.builtin").find_files()<cr>')
-map("n", "<leader>fg", '<cmd>lua require("telescope.builtin").live_grep()<cr>')
-map("n", "<leader>fr", '<cmd>lua require("telescope.builtin").grep_string()<cr>')
-map("n", "<leader>ff", '<cmd>lua require("telescope.builtin").file_browser({ hidden = true })<cr>')
-vim.api.nvim_set_keymap(
-	"n",
-	"<leader>ft",
-	":lua require'telescope'.extensions.zoxide.list{}<CR>",
-	{noremap = true, silent = true}
-)
+map("n", "<leader>fs", "<cmd>lua require('telescope.builtin').find_files()<cr>")
+map("n", "<leader>fg", "<cmd>lua require('telescope.builtin').live_grep()<cr>")
+map("n", "<leader>fr", "<cmd>lua require('telescope.builtin').grep_string()<cr>")
+map("n", "<leader>ff", "<cmd>lua require('telescope.builtin').file_browser({ hidden = true })<cr>")
+map("n", "<leader>ft", ":lua require'telescope'.extensions.zoxide.list{}<CR>")
+
 -- Telescope Vim Pickers
-map("n", "<leader>vr", '<cmd>lua require("telescope.builtin").registers()<cr>')
-map("n", "<leader>vm", '<cmd>lua require("telescope.builtin").marks()<cr>')
-map("n", "<leader>vb", '<cmd>lua require("telescope.builtin").buffers()<cr>')
-map("n", "<leader>vh", '<cmd>lua require("telescope.builtin").help_tags()<cr>')
-map("n", "<leader>vs", '<cmd>lua require("telescope.builtin").search_history()<cr>')
-map("n", "<leader>vt", '<cmd>lua require("telescope.builtin").treesitter()<cr>')
+map("n", "<leader>vr", "<cmd>lua require('telescope.builtin').registers()<cr>")
+map("n", "<leader>vm", "<cmd>lua require('telescope.builtin').marks()<cr>")
+map("n", "<leader>vb", "<cmd>lua require('telescope.builtin').buffers()<cr>")
 -- Telescope LSP Pickers
-map("n", "<leader>rr", '<cmd>lua require("telescope.builtin").lsp_references()<cr>')
+map("n", "<leader>rr", "<cmd>lua require('telescope.builtin').lsp_references()<cr>")
 
 -- Formatter
 -- Prettier
@@ -676,24 +647,6 @@ local prettier = function()
   return {
     exe = "prettier",
     args = { "--stdin-filepath", vim.api.nvim_buf_get_name(0), "--double-quote" },
-    stdin = true,
-  }
-end
-
--- Stylua
-local stylua = function()
-  return {
-    exe = "stylua",
-    args = { "--indent-width", 2, "--indent-type", "Spaces" },
-    stdin = false,
-  }
-end
-
--- Dockerfile-utils
-local dockerfile_utils = function()
-  return {
-    exe = "dockerfile-utils",
-    args = { "format" },
     stdin = true,
   }
 end
