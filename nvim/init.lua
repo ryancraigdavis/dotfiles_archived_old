@@ -223,8 +223,8 @@ capabilities.textDocument.completion.completionItem.resolveSupport = {
 }
 
 -- LSP Server config
-require("lspconfig").pylsp.setup({
-  cmd = { "pylsp" },
+require("lspconfig").pyright.setup({
+  cmd = { "pyright-langserver", "--stdio" },
   filetypes = { "python" },
   capabilities = capabilities,
   settings = {
@@ -235,16 +235,6 @@ require("lspconfig").pylsp.setup({
         useLibraryCodeForTypes = true,
       },
     },
-    pylsp = {
-      plugins = {
-        pylint = {
-          enabled = true,
-        },
-        rope = {
-          enabled = true,
-        }
-      }
-    }
   },
 })
 
