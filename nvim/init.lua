@@ -86,7 +86,12 @@ require("packer").startup(function(use)
 
   -- Auto pairs and bracket surroundings
   use "jiangmiao/auto-pairs"
-  use "ur4ltz/surround.nvim"
+  use {
+    "ur4ltz/surround.nvim",
+    config = function()
+      require"surround".setup {mappings_style = "sandwich"}
+    end
+  }
 
   -- Commenting
   use "b3nj5m1n/kommentary"
