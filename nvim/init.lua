@@ -37,6 +37,7 @@ local colors = {
   blue = "#51afef",
   red = "#ec5f67",
 }
+-- This is a cool comment!
 
 -- Map leader to space
 g.mapleader = " "
