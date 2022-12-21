@@ -19,11 +19,6 @@ local function map(mode, lhs, rhs)
   vim.keymap.set(mode, lhs, rhs)
 end
 
--- Changes the filetype detection to the new lua file
--- If this is giving issues, remove the second line
-vim.g.do_filetype_lua = 1
-vim.g.did_load_filetypes = 0
-
 local colors = {
   bg = "#202328",
   fg = "#bbc2cf",
@@ -37,7 +32,6 @@ local colors = {
   blue = "#51afef",
   red = "#ec5f67",
 }
-
 -- Map leader to space
 g.mapleader = " "
 
