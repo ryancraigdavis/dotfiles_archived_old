@@ -1,4 +1,4 @@
--- Ryan Davis NeoVim 0.7.0 Lua Config
+-- Ryan Davis NeoVim 0.8.1 Lua Config
 
 -- Dependencies
 -- Plugins require Packer, a Lua package manager, installation found https://github.com/wbthomason/packer.nvim
@@ -32,6 +32,7 @@ local colors = {
   blue = "#51afef",
   red = "#ec5f67",
 }
+
 -- Map leader to space
 g.mapleader = " "
 
@@ -239,6 +240,9 @@ require("lspconfig").pyright.setup({
 
 require("lspconfig").rust_analyzer.setup({})
 
+-- C++, Swift, and C
+require'lspconfig'.sourcekit.setup{}
+
 require("lspconfig").sumneko_lua.setup({
   settings = {
     Lua = {
@@ -418,6 +422,7 @@ opt.splitright = true -- Put new windows right of current
 opt.tabstop = 2 -- Number of spaces tabs count for
 opt.updatetime = 250 -- don't give |ins-completion-menu| messages.
 opt.wrap = true
+opt.mouse = --Disables mouse mode
 
 -- Use spelling for markdown files ‘]s’ to find next, ‘[s’ for previous, 'z=‘ for suggestions when on one.
 -- Source: http:--thejakeharding.com/tutorial/2012/06/13/using-spell-check-in-vim.html
