@@ -2,13 +2,7 @@
 
 -- Dependencies
 -- Plugins require Packer, a Lua package manager, installation found https://github.com/wbthomason/packer.nvim
--- LSP servers must be installed for each language
--- Python = `npm install -g pyright`
--- JS/TS ESLint, Docker, Lua = `brew install efm-langserver`
--- TypeScript = `npm install -g typescript typescript-language-server`
--- Rust = Download from https://github.com/rust-analyzer/rust-analyzer/releases
---    rename `rust-analyzer` | chmod and put into path
--- Formatter also requires that each formmatter (black for Python) be installed as well
+-- LSP servers, debuggers, linters, and formatters are managed with Mason
 
 -- Lua variables for setting various commands, functions, etc.
 local cmd = vim.cmd -- to execute Vim commands e.g. cmd('pwd')
@@ -60,9 +54,7 @@ require("packer").startup(function(use)
 
   -- Nvim LSP Server
   use "neovim/nvim-lspconfig"
-
-  -- LSP Code Actions
-  -- use "kosayoda/nvim-lightbulb"
+  use "williamboman/mason-lspconfig.nvim"
 
   -- Additional Linting
   use "mfussenegger/nvim-lint"
@@ -95,7 +87,10 @@ require("packer").startup(function(use)
   use "phaazon/hop.nvim"
 
   -- Debugger
-  use "puremourning/vimspector"
+  use "williamboman/mason.nvim"
+  use "mfussenegger/nvim-dap"
+  use "mfussenegger/nvim-dap-python"
+  use { "rcarriga/nvim-dap-ui", requires = {"mfussenegger/nvim-dap"} }
   use "szw/vim-maximizer"
 
   -- Camelcase Movement
@@ -222,6 +217,10 @@ capabilities.textDocument.completion.completionItem.resolveSupport = {
   },
 }
 
+-- Mason LSP/Debug/DAP manager
+require("mason").setup()
+require("mason-lspconfig").setup()
+
 -- LSP Server config
 require("lspconfig").pyright.setup({
   cmd = { "pyright-langserver", "--stdio" },
@@ -241,7 +240,8 @@ require("lspconfig").pyright.setup({
 require("lspconfig").rust_analyzer.setup({})
 
 -- C++, Swift, and C
-require'lspconfig'.sourcekit.setup{}
+-- require'lspconfig'.sourcekit.setup{}
+require'lspconfig'.clangd.setup{}
 
 require("lspconfig").sumneko_lua.setup({
   settings = {
@@ -440,12 +440,88 @@ augroup END
 -- HTML Tag completion
 g.user_emmet_leader_key = "<C-w>"
 
--- Debugger/Vimspector Config
+-- Debugger/DAP Config
+local dap = require('dap')
+require("dapui").setup()
+dap.adapters.lldb = {
+  type = 'executable',
+  command = '/usr/local/opt/llvm/bin/lldb-vscode',
+  name = 'lldb'
+}
+require('dap-python').setup('~/.virtualenvs/debugpy/bin/python')
+--[[ dap.adapters.python = {
+  type = 'executable';
+  command = '/Users/ryandavis/.local/share/nvim/mason/packages/debugpy/debugpy';
+  args = { '-m', 'debugpy.adapter' };
+} ]]
+dap.configurations.cpp = {
+  {
+    name = 'Launch',
+    type = 'lldb',
+    request = 'launch',
+    program = function()
+      return vim.fn.input('Path to executable: ', vim.fn.getcwd() .. '/', 'file')
+    end,
+    cwd = '${workspaceFolder}',
+    stopOnEntry = false,
+    args = {},
+
+    -- 💀
+    -- if you change `runInTerminal` to true, you might need to change the yama/ptrace_scope setting:
+    --
+    --    echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
+    --
+    -- Otherwise you might get the following error:
+    --
+    --    Error on launch: Failed to attach to the target process
+    --
+    -- But you should be aware of the implications:
+    -- https://www.kernel.org/doc/html/latest/admin-guide/LSM/Yama.html
+    -- runInTerminal = false,
+  },
+}
+map("n", "<leader>da", ":call vimspector#Launch()<CR>")
+-- require('dap').set_log_level('INFO')
+dap.defaults.fallback.terminal_win_cmd = '20split new'
+vim.fn.sign_define('DapBreakpoint',
+                   {text = '🟥', texthl = '', linehl = '', numhl = ''})
+vim.fn.sign_define('DapBreakpointRejected',
+                   {text = '🟦', texthl = '', linehl = '', numhl = ''})
+vim.fn.sign_define('DapStopped',
+                   {text = '⭐️', texthl = '', linehl = '', numhl = ''})
+
+vim.keymap.set('n', '<leader>dh',
+               function() require"dap".toggle_breakpoint() end)
+vim.keymap.set('n', '<leader>dH',
+               ":lua require'dap'.set_breakpoint(vim.fn.input('Breakpoint condition: '))<CR>")
+vim.keymap.set({'n', 't'}, '<C-k>', function() require"dap".step_out() end)
+vim.keymap.set({'n', 't'}, "<C-l>", function() require"dap".step_into() end)
+vim.keymap.set({'n', 't'}, '<C-j>', function() require"dap".step_over() end)
+vim.keymap.set({'n', 't'}, '<C-h>', function() require"dap".continue() end)
+vim.keymap.set('n', '<leader>dn', function() require"dap".run_to_cursor() end)
+vim.keymap.set('n', '<leader>dc', function() require"dap".terminate() end)
+vim.keymap.set('n', '<leader>dR',
+               function() require"dap".clear_breakpoints() end)
+vim.keymap.set('n', '<leader>de',
+               function() require"dap".set_exception_breakpoints({"all"}) end)
+vim.keymap.set('n', '<leader>da', function() require"debugHelper".attach() end)
+vim.keymap.set('n', '<leader>dA',
+               function() require"debugHelper".attachToRemote() end)
+vim.keymap
+    .set('n', '<leader>di', function() require"dap.ui.widgets".hover() end)
+vim.keymap.set('n', '<leader>d?', function()
+    local widgets = require "dap.ui.widgets";
+    widgets.centered_float(widgets.scopes)
+end)
+vim.keymap.set('n', '<leader>dk', ':lua require"dap".up()<CR>zz')
+vim.keymap.set('n', '<leader>dj', ':lua require"dap".down()<CR>zz')
+vim.keymap.set('n', '<leader>dr',
+               ':lua require"dap".repl.toggle({}, "vsplit")<CR><C-w>l')
+vim.keymap.set('n', '<leader>du', ':lua require"dapui".toggle()<CR>')
+
+
 map("n", "<leader>dp", "oimport pudb; pudb.set_trace()  # fmt: skip<Esc>")
 map("n", "<leader>z", ":MaximizerToggle!<CR>")
-g.vimspector_enable_mappings = "HUMAN"
-map("n", "<leader>da", ":call vimspector#Launch()<CR>")
-
 -- Camelcase Movement
 g.camelcasemotion_key = "<leader>"
 
@@ -574,8 +650,8 @@ map("v", "y", "ygv<Esc>")
 map("n", "<leader>w", "<cmd>:w<CR>")
 
 -- Tab to switch buffers in Normal mode
-map("n", "<Tab>", ":bnext<CR> :TroubleRefresh<CR>")
-map("n", "<S-Tab>", ":bprevious<CR> :TroubleRefresh<CR>")
+map("n", "<Tab>", ":bnext<CR>")
+map("n", "<S-Tab>", ":bprevious<CR>")
 
 -- Line bubbling
 -- Use these two if you don't have prettier
@@ -654,11 +730,20 @@ local rustfmt = function()
   }
 end
 
--- ShFmt (WIP)
+-- ShFmt
 local shfmt = function()
   return {
     exe = "shfmt",
     args = { "-ci", "-s", "-bn" },
+    stdin = true,
+  }
+end
+
+--C++
+local clang_format = function()
+  return {
+    exe = "clang-format",
+    args = { "-i", vim.api.nvim_buf_get_name(0) },
     stdin = true,
   }
 end
@@ -680,6 +765,7 @@ require("formatter").setup({
     html = { prettier },
     css = { prettier },
     scss = { prettier },
+    cpp = { clang_format },
     markdown = { prettier },
     rust = { rustfmt },
     python = { black },
